@@ -1,5 +1,5 @@
 # Padev Lunch
-This project is for using AI to scrape the webpages of lunch restaurants in Sweden. The backend is to be run on AWS, and the setup is to be done in CDK / Cloudfront. 
+This project is for using AI to scrape the webpages of lunch restaurants in Sweden. The backend is to be run on AWS, and the setup is to be done in CDK / CloudFormation. 
 
 The infrastructure will consist of an API-Gateway, a DynamoDB table, two S3 buckets and a couple of Lambdas. 
 It will also use SQS and eventbridge to kick off the parsing once a week. 
@@ -77,6 +77,9 @@ dynamodb -->|Read directly from DynamoDB| apigw
 
 * {app}-{env}-api
 
+## CDK / Cloudformation
+Should be in typescript.
+
 ## S3
 ### S3 restaurant-sources
 A collection of data about restaurants. To begin there will be lunch menus in PDF and image formats (PNG or JPG) uploaded when theres no HTML version.
@@ -88,7 +91,7 @@ This is where the parsed menus will be saved in CSV format.
 the filestructure will be: ```s3://{app}-{env}-weekly-lunchmenus/weekly/year={year}/week={week}/{restaurant_id}.csv"```
 
 ## DynamoDB - lunchrestaurants
-name: {projectname}-{env}-lunchrestaurants
+name: {app}-{env}-lunchrestaurants
 
 PK : restaurant_id
 
@@ -117,7 +120,7 @@ Restaurant information
 ```
   {
     "restaurant_id": "",
-    "sk": {week}#{day},
+    "sk": MENU#{week}#{day},
     "city": "",
     "area": "",
     "week": "2026_03",
@@ -136,12 +139,20 @@ name. by_location_and_day
 We are using the new functionality with multi attribute keys.
 DynomoDB has a new functionality with multi atributes: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.DesignPattern.MultiAttributeKeys.html
 
-partition key: city, area
+partition key: 
 
-sort key: week, day, restaurant_id
+1. city
+
+sort key: 
+
+1. week
+2. day
+3. restaurant_id
 
 ## Lambdas
 The two main lambdas will be for parsing the lunch information. One for parsing HTML content and one for getting information from menus in PDF or image format (JPG/PNG)
+
+All lambdas should be in Python
 
 ### Lambda parse-html-lunchmenu
 This lambda will listen to an SQS queue. The event message should have the following structure. 
@@ -165,10 +176,10 @@ Both this and parse-image-lunchmenu would preferably use the same component for 
 the CSV structure returned from ChatGPT should be:
 ```
 day,lunch,price,tags
-mon,"Marinerad kycklingfilé med kokosris, gochuangdressing, het syrad gurka med salladskål och morot toppas med sesamfrön och koriander",149kr,asiatiskt | kyckling
-mon,"Pocherad dagens fångst med dillslungad potatis, vitvinsås med sidfläsk och svampragu, zucchini- och purjolöks crudité toppas med dill",149kr,fisk | svenskt
-tue,"Friterad tofu med kokosris, gochuangdressing, het syrad gurka med salladskål och morot toppas med sesamfrön och koriander",149kr,asiatiskt | vegetariskt
-tue,"Grekiska biffar med rostad kulpotatis, gräddig tomatsås, fetaost, oliver och ruccola",149kr,grekiskt | kött
+mon,"Marinerad kycklingfilé med kokosris, gochuangdressing, het syrad gurka med salladskål och morot toppas med sesamfrön och koriander",149,asiatiskt | kyckling
+mon,"Pocherad dagens fångst med dillslungad potatis, vitvinsås med sidfläsk och svampragu, zucchini- och purjolöks crudité toppas med dill",149,fisk | svenskt
+tue,"Friterad tofu med kokosris, gochuangdressing, het syrad gurka med salladskål och morot toppas med sesamfrön och koriander",149,asiatiskt | vegetariskt
+tue,"Grekiska biffar med rostad kulpotatis, gräddig tomatsås, fetaost, oliver och ruccola",149,grekiskt | kött
 ```
 
 max_tokens should be 2000 to start. But it would be good if we could have it as a variable for specific restaurants where we know the response could be long. This can be hardcoded to begin with for specific restaurant_id. 
@@ -189,7 +200,9 @@ Apart from SQS trigger, this function should be able to be triggered by a manual
 ```
 
 ### Lambda parse-image-lunchmenu
-Listens to an S3 (restaurant data) where PDFs or images of menus are uploaded. The S3 folder structure is ```S3://menus/{restaurant_id}```
+Listens to an S3 (restaurant data) where PDFs or images of menus are uploaded. The S3 folder structure is
+```s3://{app}-{env}-restaurant-sources/menus/{restaurant_id}```
+
 The PDF or Image is sent directly to ChatGPT for transcribing and formatting to correct CSV. CSV is saved to S3
 
 **ChatGPT Parsing**
@@ -201,7 +214,7 @@ But PDFs and images should be uploaded to ChatGPT as is. No effort to try and pa
 
 **Triggers & Event Sources**
 
-Trigger: Object Created or Object Updated on S3
+Trigger: s3:ObjectCreated:*
 
 
 ### Lambda import-lunchmenu-to-dynamodb
