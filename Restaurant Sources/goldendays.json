@@ -1,0 +1,14 @@
+{
+    "restaurant_id": "goldendays",
+    "sk": "INFO",
+    "restaurant_name": "Golden Days",
+    
+    "city": "goteborg",
+    "area": "innerstaden",
+    "city_name": "Göteborg",
+    "url": "https://www.goldendays.se/",
+    "info": "TILL LUNCHEN INGÅR EN FRÄSCH SALLADSBUFFÉ, NYBRYGGT KAFFE OCH KAKA",
+    "lunch_hours": "11.00-15.00",
+    "address": "",
+    "phone": ""
+   }
