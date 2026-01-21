@@ -2,14 +2,10 @@ import os
 import sys
 import urllib.parse
 
-import boto3
-
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from shared import date_utils  # noqa: E402
 from shared import openai_client  # noqa: E402
-
-s3 = boto3.client("s3")
+from shared import storage  # noqa: E402
 
 
 def extract_restaurant_id(key: str):
@@ -28,21 +24,13 @@ def handler(event, _context):
         if not restaurant_id:
             continue
 
-        obj = s3.get_object(Bucket=bucket, Key=key)
+        obj = storage.get_s3_object(bucket, key)
         body = obj.get("Body")
         if not body:
             raise ValueError("Menu object body was empty")
 
         binary = body.read()
         csv_content = openai_client.parse_image_to_csv(binary, {"restaurant_id": restaurant_id})
-        weekly_key = date_utils.build_weekly_key(restaurant_id)
-
-        s3.put_object(
-            Bucket=os.environ["WEEKLY_LUNCHMENUS_BUCKET"],
-            Key=weekly_key,
-            Body=csv_content.encode("utf-8"),
-            ContentType="text/csv",
-            Metadata={"restaurant_id": restaurant_id},
-        )
+        storage.save_weekly_csv(csv_content, restaurant_id)
 
     return {"ok": True}

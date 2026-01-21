@@ -46,6 +46,8 @@ lambda2 --> s3lunch_csv
 
 dynamodb -->|Read directly from DynamoDB| apigw
 
+secrets@{ icon: "logos:aws-secrets-manager", form: "square", label: "enqueue-lunchrestaurants", pos: "B", h: 60 } 
+
 ```
 ## Resource Names
 **Buckets:** 
@@ -108,6 +110,7 @@ Restaurant information
     "restaurant_name": "",
     "url": "",
     "city": "",
+    "city_name": "",
     "area": "",
     "info": "",
     "lunch_hours": "",
@@ -116,6 +119,45 @@ Restaurant information
     "phone": ""
    }
 ```
+
+````
+{
+  "restaurant_id": {
+    "S": "goldendays"
+  },
+  "sk": {
+    "S": "INFO"
+  },
+  "address": {
+    "S": ""
+  },
+  "area": {
+    "S": "innerstaden"
+  },
+  "city": {
+    "S": "goteborg"
+  },
+  "info": {
+    "S": "TILL LUNCHEN INGÅR EN FRÄSCH SALLADSBUFFÉ, NYBRYGGT KAFFE OCH KAKA"
+  },
+  "lunch_hours": {
+    "S": "11.00-15.00"
+  },
+  "phone": {
+    "S": ""
+  },
+  "restaurant_name": {
+    "S": "Golden Days"
+  },
+  "url": {
+    "S": "https://www.goldendays.se/"
+  },
+  "city_name": {
+    "S": "Göteborg"
+  }
+}
+````
+
 ### SK = MENU#{week}#{day}
 ```
   {
@@ -131,6 +173,53 @@ Restaurant information
     ] 
    }
 ```
+
+```
+{
+ "restaurant_id": {
+  "S": "goldendays"
+ },
+ "sk": {
+  "S": "MENU#2026_03#mon"
+ },
+ "city": {
+  "S": "goteborg"
+ },
+ "week": {
+  "S": "2026_03"
+ },
+ "area": {
+  "S": "innerstaden"
+ },
+ "day": {
+  "S": "mon"
+ },
+ "dishes": {
+  "L": [
+   {
+    "M": {
+     "name": {
+      "S": "Fiskgryta"
+     },
+     "price": {
+      "S": "145"
+     },
+     "tags": {
+      "L": [
+       {
+        "S": "fish"
+       },
+       {
+        "S": "glutenfree"
+       }
+      ]
+     }
+    }
+   }
+  ]
+ }
+}
+````
 
 * week is in the format: YYYY_WW, (2026_04)
 

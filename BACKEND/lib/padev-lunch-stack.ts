@@ -10,6 +10,7 @@ import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3n from "aws-cdk-lib/aws-s3-notifications";
 import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 
 interface PadevLunchStackProps extends cdk.StackProps {
   appName: string;
@@ -85,7 +86,21 @@ export class PadevLunchStack extends cdk.Stack {
 
     const table = dynamodb.Table.fromTableName(this, "LunchRestaurantsTableRef", tableName);
 
-    const lambdaCode = lambda.Code.fromAsset(path.join(__dirname, "..", "lambdas"));
+    const lambdaCode = lambda.Code.fromAsset(path.join(__dirname, "..", "lambdas"), {
+      bundling: {
+        image: lambda.Runtime.PYTHON_3_11.bundlingImage,
+        command: [
+          "bash",
+          "-c",
+          "pip install -r requirements.txt -t /asset-output && cp -au . /asset-output"
+        ]
+      }
+    });
+
+    const openAiApiKeySecret = new secretsmanager.Secret(this, "OpenAiApiKeySecret", {
+      secretName: name("openai-api-key"),
+      description: "OpenAI API key for menu parsing Lambdas"
+    });
 
     const parseHtmlLambda = new lambda.Function(this, "ParseHtmlLunchmenuLambda", {
       functionName: name("parse-html-lunchmenu"),
@@ -95,7 +110,8 @@ export class PadevLunchStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(2),
       environment: {
         WEEKLY_LUNCHMENUS_BUCKET: weeklyLunchmenusBucket.bucketName,
-        RESTAURANT_SOURCES_BUCKET: restaurantSourcesBucket.bucketName
+        RESTAURANT_SOURCES_BUCKET: restaurantSourcesBucket.bucketName,
+        OPENAI_API_KEY_SECRET_ARN: openAiApiKeySecret.secretArn
       }
     });
 
@@ -107,7 +123,8 @@ export class PadevLunchStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(3),
       environment: {
         WEEKLY_LUNCHMENUS_BUCKET: weeklyLunchmenusBucket.bucketName,
-        RESTAURANT_SOURCES_BUCKET: restaurantSourcesBucket.bucketName
+        RESTAURANT_SOURCES_BUCKET: restaurantSourcesBucket.bucketName,
+        OPENAI_API_KEY_SECRET_ARN: openAiApiKeySecret.secretArn
       }
     });
 
@@ -199,6 +216,9 @@ export class PadevLunchStack extends cdk.Stack {
     restaurantSourcesBucket.grantRead(parseImageLambda);
     weeklyLunchmenusBucket.grantRead(importToDdbLambda);
 
+    openAiApiKeySecret.grantRead(parseHtmlLambda);
+    openAiApiKeySecret.grantRead(parseImageLambda);
+
     table.grantReadWriteData(importToDdbLambda);
     table.grantReadData(enqueueRestaurantsLambda);
     table.grantReadData(apiLambda);
@@ -207,6 +227,10 @@ export class PadevLunchStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, "ApiEndpoint", {
       value: api.url
+    });
+
+    new cdk.CfnOutput(this, "OpenAiApiKeySecretArn", {
+      value: openAiApiKeySecret.secretArn
     });
   }
 }
