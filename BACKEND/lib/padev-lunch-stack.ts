@@ -4,6 +4,7 @@ import { Construct } from "constructs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as events from "aws-cdk-lib/aws-events";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
@@ -197,13 +198,202 @@ export class PadevLunchStack extends cdk.Stack {
     });
 
     const restaurants = api.root.addResource("restaurants");
-    restaurants.addMethod("GET", new apigateway.LambdaIntegration(apiLambda));
+
+    const apiDdbRole = new iam.Role(this, "ApiDdbRole", {
+      assumedBy: new iam.ServicePrincipal("apigateway.amazonaws.com")
+    });
+    table.grantReadData(apiDdbRole);
+
+    const listRestaurantsIntegration = new apigateway.AwsIntegration({
+      service: "dynamodb",
+      action: "Scan",
+      options: {
+        credentialsRole: apiDdbRole,
+        requestTemplates: {
+          "application/json": JSON.stringify({
+            TableName: tableName,
+            FilterExpression: "#sk = :INFO",
+            ExpressionAttributeNames: { "#sk": "sk" },
+            ExpressionAttributeValues: { ":INFO": { S: "INFO" } }
+          })
+        },
+        integrationResponses: [
+          {
+            statusCode: "200",
+            responseParameters: {
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+            },
+            responseTemplates: {
+              "application/json": [
+                "#set($inputRoot = $input.path('$'))",
+                "{",
+                "  \"items\": [",
+                "#foreach($item in $inputRoot.Items)",
+                "    {",
+                "      \"restaurant_id\": \"$item.restaurant_id.S\",",
+                "      \"sk\": \"$item.sk.S\",",
+                "      \"restaurant_name\": \"$!item.restaurant_name.S\",",
+                "      \"url\": \"$!item.url.S\",",
+                "      \"city\": \"$!item.city.S\",",
+                "      \"city_name\": \"$!item.city_name.S\",",
+                "      \"area\": \"$!item.area.S\",",
+                "      \"info\": \"$!item.info.S\",",
+                "      \"lunch_hours\": \"$!item.lunch_hours.S\",",
+                "      \"address\": \"$!item.address.S\",",
+                "      \"coordinates\": \"$!item.coordinates.S\",",
+                "      \"phone\": \"$!item.phone.S\"",
+                "    }#if($foreach.hasNext),#end",
+                "#end",
+                "  ]",
+                "}"
+              ].join("\n")
+            }
+          }
+        ]
+      }
+    });
+
+    restaurants.addMethod("GET", listRestaurantsIntegration, {
+      methodResponses: [
+        {
+          statusCode: "200",
+          responseParameters: {
+            "method.response.header.Access-Control-Allow-Origin": true
+          }
+        }
+      ]
+    });
 
     const restaurantById = restaurants.addResource("{restaurant_id}");
-    restaurantById.addMethod("GET", new apigateway.LambdaIntegration(apiLambda));
+
+    const getRestaurantIntegration = new apigateway.AwsIntegration({
+      service: "dynamodb",
+      action: "GetItem",
+      options: {
+        credentialsRole: apiDdbRole,
+        requestTemplates: {
+          "application/json": JSON.stringify({
+            TableName: tableName,
+            Key: {
+              restaurant_id: { S: "$input.params('restaurant_id')" },
+              sk: { S: "INFO" }
+            }
+          })
+        },
+        integrationResponses: [
+          {
+            statusCode: "200",
+            responseParameters: {
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+            },
+            responseTemplates: {
+              "application/json": [
+                "#set($inputRoot = $input.path('$'))",
+                "#set($item = $inputRoot.Item)",
+                "{",
+                "      \"restaurant_id\": \"$item.restaurant_id.S\",",
+                //"      \"sk\": \"$item.sk.S\",",
+                "      \"restaurant_name\": \"$!item.restaurant_name.S\",",
+                "      \"url\": \"$!item.url.S\",",
+                "      \"city\": \"$!item.city.S\",",
+                "      \"city_name\": \"$!item.city_name.S\",",
+                "      \"area\": \"$!item.area.S\",",
+                "      \"info\": \"$!item.info.S\",",
+                "      \"lunch_hours\": \"$!item.lunch_hours.S\",",
+                "      \"address\": \"$!item.address.S\",",
+                "      \"coordinates\": \"$!item.coordinates.S\",",
+                "      \"phone\": \"$!item.phone.S\"",
+                "}"
+              ].join("\n")
+            }
+          }
+        ]
+      }
+    });
+
+    restaurantById.addMethod("GET", getRestaurantIntegration, {
+      methodResponses: [
+        {
+          statusCode: "200",
+          responseParameters: {
+            "method.response.header.Access-Control-Allow-Origin": true
+          }
+        }
+      ]
+    });
 
     const restaurantByWeek = restaurantById.addResource("{week}");
-    restaurantByWeek.addMethod("GET", new apigateway.LambdaIntegration(apiLambda));
+    const restaurantWeekIntegration = new apigateway.AwsIntegration({
+      service: "dynamodb",
+      action: "Query",
+      options: {
+        credentialsRole: apiDdbRole,
+        requestTemplates: {
+          "application/json": JSON.stringify({
+            TableName: tableName,
+            KeyConditionExpression: "restaurant_id = :id AND begins_with(#sk, :prefix)",
+            ExpressionAttributeNames: { "#sk": "sk" },
+            ExpressionAttributeValues: {
+              ":id": { S: "$input.params('restaurant_id')" },
+              ":prefix": { S: "MENU#$input.params('week')" }
+            }
+          })
+        },
+        integrationResponses: [
+          {
+            statusCode: "200",
+            responseParameters: {
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+            },
+            responseTemplates: {
+              "application/json": [
+                "#set($inputRoot = $input.path('$'))",
+                "{",
+                "  \"items\": [",
+                "#foreach($item in $inputRoot.Items)",
+                "    {",
+                "      \"restaurant_id\": \"$item.restaurant_id.S\",",
+                "      \"city\": \"$!item.city.S\",",
+                "      \"week\": \"$!item.week.S\",",
+                "      \"day\": \"$!item.day.S\",",
+                "      \"dishes\": [",
+                "#foreach($dish in $item.dishes.L)",
+                "        #set($dishMap = $dish.M)",
+                "        #set($tags = $dishMap.tags.L)",
+                "        {",
+                "          \"name\": \"$util.escapeJavaScript($dishMap.name.S)\",",
+                "          \"price\": #if($dishMap.price.N != \"\")$dishMap.price.N#else null#end,",
+                "          \"tags\": [",
+                "#if($tags != \"\")",
+                "#foreach($tag in $tags)",
+                "            \"$util.escapeJavaScript($tag.S)\"#if($foreach.hasNext),#end",
+                "#end",
+                "#end",
+                "          ]",
+                "        }#if($foreach.hasNext),#end",
+                "#end",
+                "      ]",
+                "    }#if($foreach.hasNext),#end",
+                "#end",
+                "  ]",
+                "}"
+              ].join("\n")
+            }
+          }
+        ]
+      }
+    });
+
+    restaurantByWeek.addMethod("GET", restaurantWeekIntegration, {
+      methodResponses: [
+        {
+          statusCode: "200",
+          responseParameters: {
+            "method.response.header.Access-Control-Allow-Origin": true
+          }
+        }
+      ]
+    });
 
     const lunch = api.root.addResource("lunch");
     const lunchCity = lunch.addResource("{city}");

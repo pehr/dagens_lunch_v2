@@ -29,7 +29,7 @@ def parse_csv(content: str):
         lunch = (row.get("lunch") or "").strip()
         price = (row.get("price") or "").strip()
         tags = (row.get("tags") or "").strip()
-        if not day or not lunch:
+        if day not in {"mon", "tue", "wed", "thu", "fri"} or not lunch:
             continue
         rows.append({
             "day": day,
@@ -62,33 +62,41 @@ def handler(event, _context):
         obj = s3.get_object(Bucket=bucket, Key=key)
         body = obj.get("Body")
         content = body.read().decode("utf-8") if body else ""
+        metadata = obj.get("Metadata") or {}
 
         rows = parse_csv(content)
         if not rows:
             continue
 
         info = get_restaurant_info(table, restaurant_id) or {}
-        city = info.get("city", "")
-        area = info.get("area", "")
+        city = metadata.get("city") or info.get("city")
+        area = metadata.get("area") or info.get("area")
 
         grouped = {}
         for row in rows:
-            grouped.setdefault(row["day"], []).append({
+            dish = {
                 "name": row["name"],
-                "price": normalize_price(row["price"]),
                 "tags": [tag for tag in (t.strip() for t in row["tags"].split("|")) if tag],
+            }
+            price_value = normalize_price(row["price"])
+            if price_value is not None:
+                dish["price"] = price_value
+            grouped.setdefault(row["day"], []).append({
+                **dish
             })
 
         for day, dishes in grouped.items():
             item = {
                 "restaurant_id": restaurant_id,
                 "sk": f"MENU#{week}#{day}",
-                "city": city,
-                "area": area,
                 "week": week,
                 "day": day,
                 "dishes": dishes,
             }
+            if city:
+                item["city"] = city
+            if area:
+                item["area"] = area
             table.put_item(Item=item)
 
     return {"ok": True}

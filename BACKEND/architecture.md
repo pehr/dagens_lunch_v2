@@ -47,6 +47,7 @@ lambda2 --> s3lunch_csv
 dynamodb -->|Read directly from DynamoDB| apigw
 
 secrets@{ icon: "logos:aws-secrets-manager", form: "square", label: "enqueue-lunchrestaurants", pos: "B", h: 60 } 
+cdk@{ icon: "logos:aws-cloudformation", form: "square", label: "enqueue-lunchrestaurants", pos: "B", h: 60 } 
 
 ```
 ## Resource Names
