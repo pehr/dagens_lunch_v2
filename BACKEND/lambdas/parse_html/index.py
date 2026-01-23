@@ -4,7 +4,8 @@ from html.parser import HTMLParser
 #from bs4 import BeautifulSoup
 import os
 import sys
-import urllib.request
+import time
+import requests
 from markdownify import markdownify as md
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
@@ -14,8 +15,29 @@ from shared import storage  # noqa: E402
 
 
 def fetch_html(url: str) -> str:
-    with urllib.request.urlopen(url) as response:
-        return response.read().decode("utf-8")
+    print("Fetch HTML", {"url": url})
+    timeout_seconds = int(os.environ.get("FETCH_TIMEOUT_SECONDS", "10"))
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "sv-SE,sv;q=0.9,en;q=0.8",
+    }
+    start = time.monotonic()
+    try:
+        print("fetch_html request start", {"url": url})
+        response = requests.get(url, headers=headers, timeout=(timeout_seconds, timeout_seconds))
+        print("fetch_html response received", {"url": url, "status": response.status_code})
+        response.raise_for_status()
+        print("fetch_html response ok", {"url": url, "length": len(response.text)})
+        return response.text
+    except Exception as exc:
+        elapsed = round(time.monotonic() - start, 2)
+        print("fetch_html failed", {"url": url, "seconds": elapsed, "error": str(exc)})
+        raise
 
 
 class _TextExtractor(HTMLParser):
@@ -89,7 +111,7 @@ def sanitize_html(html: str) -> str:
     html = re.sub(r"<style\b[^>]*>[\s\S]*?</style>", "", html, flags=re.IGNORECASE)
     html = re.sub(r"<nav\b[^>]*>[\s\S]*?</nav>", "", html, flags=re.IGNORECASE)
     html = re.sub(r"<footer\b[^>]*>[\s\S]*?</footer>", "", html, flags=re.IGNORECASE)
-    html = re.sub(r"<header\b[^>]*>[\s\S]*?</header>", "", html, flags=re.IGNORECASE)
+    #html = re.sub(r"<header\b[^>]*>[\s\S]*?</header>", "", html, flags=re.IGNORECASE) #Removed for problems w Olearys
     html = re.sub(r"<aside\b[^>]*>[\s\S]*?</aside>", "", html, flags=re.IGNORECASE)
     html = re.sub(r"<noscript\b[^>]*>[\s\S]*?</noscript>", "", html, flags=re.IGNORECASE)
     html = re.sub(r"<svg\b[^>]*>[\s\S]*?</svg>", "", html, flags=re.IGNORECASE)
@@ -110,7 +132,8 @@ def sanitize_html(html: str) -> str:
     extractor = _TextExtractor()
     extractor.feed(html)
     cleaned_content = " ".join(extractor.text().split())
-    return cleaned_content[:200000]
+    return cleaned_content
+    #return cleaned_content[:200000]
 
 
 def handle_payload(payload, source: str):
@@ -124,11 +147,16 @@ def handle_payload(payload, source: str):
     if not restaurant_url or not restaurant_id:
         raise ValueError("restaurant_url and restaurant_id are required")
 
+    print("parse_html fetch start", {"restaurant_id": restaurant_id, "url": restaurant_url})
     html = fetch_html(restaurant_url)
+    print("parse_html fetch done", {"restaurant_id": restaurant_id, "html_len": len(html)})
+    html = sanitize_html(html)
+    print("parse_html markdownify start", {"restaurant_id": restaurant_id})
     html = md(html)
+    print("parse_html markdownify done", {"restaurant_id": restaurant_id, "md_len": len(html)})
     #html = extract_relevant_content(html)
     #html = sanitize_html(html)
-    print("parse_html fetched html", {"restaurant_id": restaurant_id, "html": html})
+    print("parse_html openai start", {"restaurant_id": restaurant_id})
     csv_content = openai_client.parse_html_to_csv(
         html,
         {
@@ -139,7 +167,17 @@ def handle_payload(payload, source: str):
         },
     )
 
+    print("parse_html save to s3", {"restaurant_id": restaurant_id})
     storage.save_weekly_csv(csv_content, restaurant_id, city=city, area=area)
+    print(
+        "parse_html done",
+        {
+            "restaurant_id": restaurant_id,
+            "city": city,
+            "area": area,
+            "timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        },
+    )
 
 
 def handler(event, _context):

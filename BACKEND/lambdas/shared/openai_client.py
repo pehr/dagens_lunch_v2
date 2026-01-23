@@ -3,6 +3,7 @@ import csv
 import io
 import json
 import os
+import time
 import urllib.request
 
 import boto3
@@ -40,8 +41,14 @@ Return only CSV and follow the CSV schema from the system prompt.
 """
 )
 IMAGE_PROMPT = (
-    "Parse the provided image content and extract the lunch menu for the current week. "
-    "Use the context fields when present."
+    f"""Parse the included PDF or image and extract the lunch menu for each day of the week.
+For each day, provide the day of the week, what's for lunch, and the price. There might be multiple lunch options for a day. Keep all text in Swedish.
+The day of the week should always be in lowercase, 3-letter shortened as mon, tue, wed, thu, fri.
+Some courses can be for multiple days; copy them for each day they are on the menu.
+Also tag the dish (e.g. italian, asian, swedish, husmanskost). A dish can have multiple tags.
+Ignore non-menu content such as opening hours or addresses.
+Return only CSV and follow the CSV schema from the system prompt.
+"""
 )
 
 
@@ -114,37 +121,73 @@ def resolve_top_p() -> float | None:
     return float(value) if value is not None else None
 
 
+def resolve_reasoning_effort() -> str | None:
+    return os.environ.get("OPENAI_REASONING_EFFORT")
+
+
+def resolve_text_verbosity() -> str | None:
+    return os.environ.get("OPENAI_TEXT_VERBOSITY")
+
+
+def detect_mime_type(binary: bytes) -> str:
+    if binary.startswith(b"%PDF"):
+        return "application/pdf"
+    if binary.startswith(b"\xFF\xD8"):
+        return "image/jpeg"
+    if binary.startswith(b"\x89PNG"):
+        return "image/png"
+    return "image/jpeg"
+
+
 def build_openai_request(task: str, context: dict, payload: dict, model: str, max_tokens: int):
     if task == "html":
         user_prompt = HTML_PROMPT
         payload_block = payload.get("html", "")
-    elif task == "image":
-        user_prompt = IMAGE_PROMPT
-        binary = payload.get("binary", b"")
-        payload_block = {
-            "image_bytes_base64": base64.b64encode(binary).decode("utf-8"),
-            "image_bytes_len": len(binary),
-        }
-    else:
-        raise ValueError(f"Unknown task: {task}")
-
-    request = {
-        "model": model,
-        "max_output_tokens": max_tokens,
-        #"text": {"format": {"type": "text"}, "verbosity": "low"},
-        #"reasoning": {"effort": "low"},
-        "text": {"format": {"type": "text"}},
-        "input": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+        user_content = [
             {
-                "role": "user",
-                "content": json.dumps(
+                "type": "input_text",
+                "text": json.dumps(
                     {
                         "prompt": user_prompt,
                         "context": context,
                         "payload": payload_block,
                     }
                 ),
+            }
+        ]
+    elif task == "image":
+        user_prompt = IMAGE_PROMPT
+        binary = payload.get("binary", b"")
+        image_base64 = base64.b64encode(binary).decode("utf-8")
+        mime_type = detect_mime_type(binary)
+        image_url = f"data:{mime_type};base64,{image_base64}"
+        user_content = [
+            {
+                "type": "input_text",
+                "text": json.dumps(
+                    {
+                        "prompt": user_prompt,
+                        "context": context,
+                    }
+                ),
+            },
+            {
+                "type": "input_image",
+                "image_url": image_url,
+            },
+        ]
+    else:
+        raise ValueError(f"Unknown task: {task}")
+
+    request = {
+        "model": model,
+        "max_output_tokens": max_tokens,
+        "text": {"format": {"type": "text"}},
+        "input": [
+            {"role": "system", "content": [{"type": "input_text", "text": SYSTEM_PROMPT}]},
+            {
+                "role": "user",
+                "content": user_content,
             },
         ],
         "metadata": {
@@ -158,11 +201,18 @@ def build_openai_request(task: str, context: dict, payload: dict, model: str, ma
         request["temperature"] = temperature
     if top_p is not None:
         request["top_p"] = top_p
+    reasoning_effort = resolve_reasoning_effort()
+    if reasoning_effort:
+        request["reasoning"] = {"effort": reasoning_effort}
+    text_verbosity = resolve_text_verbosity()
+    if text_verbosity:
+        request["text"]["verbosity"] = text_verbosity
     return request
 
 
 def validate_csv_response(csv_text: str, restaurant_id: str | None):
     errors = []
+    csv_text = "\n".join(line for line in csv_text.splitlines() if line.strip())
     try:
         reader = csv.reader(io.StringIO(csv_text))
         rows = list(reader)
@@ -261,8 +311,11 @@ def query_chatgpt(task: str, context: dict, payload: dict):
     )
 
     try:
+        start = time.monotonic()
         with urllib.request.urlopen(http_request, timeout=60) as response:
             raw = response.read().decode("utf-8")
+        elapsed = round(time.monotonic() - start, 2)
+    print("OpenAI response received", {"status": response.status, "seconds": elapsed})
     except urllib.error.HTTPError as exc:
         error_body = exc.read().decode("utf-8") if exc.fp else ""
         print(
@@ -270,9 +323,24 @@ def query_chatgpt(task: str, context: dict, payload: dict):
             {"status": exc.code, "body": error_body[:2000]},
         )
         raise
+    except Exception as exc:
+        print("OpenAI request error", {"error": str(exc)})
+        raise
 
-    payload = json.loads(raw)
-    text = _extract_response_text(payload).strip()
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        print("OpenAI response decode failed", {"error": str(exc), "body": raw[:2000]})
+        raise
+    try:
+        text = _extract_response_text(payload).strip()
+    except Exception as exc:
+        print("OpenAI response extract failed", {"error": str(exc), "keys": list(payload.keys())})
+        raise
+    print(
+        "OpenAI parse ok",
+        {"task": task, "restaurant_id": context.get("restaurant_id"), "output_len": len(text)},
+    )
     return text
 
 

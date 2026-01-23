@@ -1,0 +1,15 @@
+{
+    "restaurant_id": "carotte",
+    "sk": "INFO",
+    "restaurant_name": "Carotte Restaurang Läppstiftet",
+    
+    "city": "goteborg",
+    "area": "centralen",
+    "city_name": "Göteborg",
+    "url": "https://carotte.se/restauranger/lappstiftet/dagens-lunch/",
+    "info": "Välkommen till Carotte Restaurang Läppstiftet, där smak, kvalitet och atmosfär möts i en oslagbar lunchupplevelse. Beläget i ikoniska Läppstiftet vid Götaälv, erbjuder vi en modern och hållbar matupplevelse med noggrant utvalda råvaror och passionerad matlagning.",
+    "lunch_hours": "11:15-13:15",
+    "address": "Läppstiftet, Göteborg",
+    "phone": "08-655 11 22",
+    "scan": "yes"
+   }

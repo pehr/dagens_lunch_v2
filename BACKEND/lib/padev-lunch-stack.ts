@@ -125,6 +125,7 @@ export class PadevLunchStack extends cdk.Stack {
       environment: {
         WEEKLY_LUNCHMENUS_BUCKET: weeklyLunchmenusBucket.bucketName,
         RESTAURANT_SOURCES_BUCKET: restaurantSourcesBucket.bucketName,
+        TABLE_NAME: tableName,
         OPENAI_API_KEY_SECRET_ARN: openAiApiKeySecret.secretArn
       }
     });
@@ -178,16 +179,18 @@ export class PadevLunchStack extends cdk.Stack {
       { prefix: "weekly/" }
     );
 
-    const weeklyRule = new events.Rule(this, "WeeklyLunchmenuIngestRule", {
-      ruleName: name("weekly-lunchmenu-ingest"),
-      schedule: events.Schedule.cron({
-        minute: "0",
-        hour: "9",
-        weekDay: "MON"
-      })
-    });
+    if (envName === "prod") {
+      const weeklyRule = new events.Rule(this, "WeeklyLunchmenuIngestRule", {
+        ruleName: name("weekly-lunchmenu-ingest"),
+        schedule: events.Schedule.cron({
+          minute: "0",
+          hour: "9",
+          weekDay: "MON"
+        })
+      });
 
-    weeklyRule.addTarget(new targets.LambdaFunction(enqueueRestaurantsLambda));
+      weeklyRule.addTarget(new targets.LambdaFunction(enqueueRestaurantsLambda));
+    }
 
     const api = new apigateway.RestApi(this, "LunchApi", {
       restApiName: name("api"),
@@ -203,6 +206,12 @@ export class PadevLunchStack extends cdk.Stack {
       assumedBy: new iam.ServicePrincipal("apigateway.amazonaws.com")
     });
     table.grantReadData(apiDdbRole);
+    apiDdbRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["dynamodb:Query"],
+        resources: [`${table.tableArn}/index/by_location_and_day`]
+      })
+    );
 
     const listRestaurantsIntegration = new apigateway.AwsIntegration({
       service: "dynamodb",
@@ -399,7 +408,93 @@ export class PadevLunchStack extends cdk.Stack {
     const lunchCity = lunch.addResource("{city}");
     const lunchWeek = lunchCity.addResource("{week}");
     const lunchDay = lunchWeek.addResource("{day}");
-    lunchDay.addMethod("GET", new apigateway.LambdaIntegration(apiLambda));
+    const lunchByLocationIntegration = new apigateway.AwsIntegration({
+      service: "dynamodb",
+      action: "Query",
+      options: {
+        credentialsRole: apiDdbRole,
+        requestTemplates: {
+          "application/json": [
+            "#set($area = $input.params('area'))",
+            "{",
+            "  \"TableName\": \"" + tableName + "\",",
+            "  \"IndexName\": \"by_location_and_day\",",
+            "  \"KeyConditionExpression\": \"#city = :city AND #week = :week AND #day = :day\",",
+            "  \"ExpressionAttributeNames\": {",
+            "    \"#city\": \"city\",",
+            "    \"#week\": \"week\",",
+            "    \"#day\": \"day\"#if($area != \"\"),",
+            "    \"#area\": \"area\"#end",
+            "  },",
+            "  \"ExpressionAttributeValues\": {",
+            "    \":city\": {\"S\": \"$input.params('city')\"},",
+            "    \":week\": {\"S\": \"$input.params('week')\"},",
+            "    \":day\": {\"S\": \"$input.params('day')\"}#if($area != \"\"),",
+            "    \":area\": {\"S\": \"$area\"}#end",
+            "  }",
+            "#if($area != \"\")",
+            "  ,\"FilterExpression\": \"#area = :area\"",
+            "#end",
+            "}"
+          ].join("\n")
+        },
+        integrationResponses: [
+          {
+            statusCode: "200",
+            responseParameters: {
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+            },
+            responseTemplates: {
+              "application/json": [
+                "#set($inputRoot = $input.path('$'))",
+                "{",
+                "  \"items\": [",
+                "#foreach($item in $inputRoot.Items)",
+                "    {",
+                "      \"restaurant_id\": \"$item.restaurant_id.S\",",
+                "      \"restaurant_name\": \"$item.restaurant_name.S\",",
+                "      \"city\": \"$!item.city.S\",",
+                "      \"area\": \"$!item.area.S\",",
+                "      \"week\": \"$!item.week.S\",",
+                "      \"day\": \"$!item.day.S\",",
+                "      \"dishes\": [",
+                "#foreach($dish in $item.dishes.L)",
+                "        #set($dishMap = $dish.M)",
+                "        #set($tags = $dishMap.tags.L)",
+                "        {",
+                "          \"name\": \"$util.escapeJavaScript($dishMap.name.S)\",",
+                "          \"price\": #if($dishMap.price.N != \"\")$dishMap.price.N#else null#end,",
+                "          \"tags\": [",
+                "#if($tags != \"\")",
+                "#foreach($tag in $tags)",
+                "            \"$util.escapeJavaScript($tag.S)\"#if($foreach.hasNext),#end",
+                "#end",
+                "#end",
+                "          ]",
+                "        }#if($foreach.hasNext),#end",
+                "#end",
+                "      ]",
+                "    }#if($foreach.hasNext),#end",
+                "#end",
+                "  ]",
+                "}"
+              ].join("\n")
+            }
+          }
+        ]
+      }
+    });
+
+    lunchDay.addMethod("GET", lunchByLocationIntegration, {
+      methodResponses: [
+        {
+          statusCode: "200",
+          responseParameters: {
+            "method.response.header.Access-Control-Allow-Origin": true
+          }
+        }
+      ]
+    });
 
     weeklyLunchmenusBucket.grantPut(parseHtmlLambda);
     weeklyLunchmenusBucket.grantPut(parseImageLambda);
@@ -412,6 +507,7 @@ export class PadevLunchStack extends cdk.Stack {
     table.grantReadWriteData(importToDdbLambda);
     table.grantReadData(enqueueRestaurantsLambda);
     table.grantReadData(apiLambda);
+    table.grantReadData(parseImageLambda);
 
     parseQueue.grantSendMessages(enqueueRestaurantsLambda);
 

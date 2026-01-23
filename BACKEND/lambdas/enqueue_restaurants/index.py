@@ -28,7 +28,10 @@ def handler(_event, _context):
         for item in result.get("Items", []):
             url = item.get("url", {}).get("S")
             restaurant_id = item.get("restaurant_id", {}).get("S")
+            scan = (item.get("scan", {}).get("S") or "yes").strip().lower()
             if not url or not restaurant_id:
+                continue
+            if scan == "no":
                 continue
 
             message = {

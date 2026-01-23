@@ -1,0 +1,15 @@
+{
+    "restaurant_id": "poppels",
+    "sk": "INFO",
+    "restaurant_name": "Poppels CityBryggeri",
+    
+    "city": "goteborg",
+    "area": "centralen",
+    "city_name": "Göteborg",
+    "url": "https://www.poppels.se/citybryggeriet/lunch/",
+    "info": "TILL LUNCHEN INGÅR EN FRÄSCH SALLADSBUFFÉ, NYBRYGGT KAFFE OCH KAKA",
+    "lunch_hours": "11.30-14.00",
+    "address": "VIKINGSGATAN 1, GÖTEBORG",
+    "phone": "0702-150072",
+    "scan": "no"
+   }
