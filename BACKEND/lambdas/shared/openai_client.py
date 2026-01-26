@@ -105,6 +105,10 @@ def resolve_max_tokens(restaurant_id: str | None):
         try:
             overrides = json.loads(override_raw)
             if overrides and restaurant_id and restaurant_id in overrides:
+                print(
+            "restaurant_id token override",
+            {"restaurant_id": restaurant_id, "override": overrides[restaurant_id]},
+        )
                 return int(overrides[restaurant_id])
         except json.JSONDecodeError:
             pass
@@ -159,7 +163,7 @@ def build_openai_request(task: str, context: dict, payload: dict, model: str, ma
         user_prompt = IMAGE_PROMPT
         binary = payload.get("binary", b"")
         image_base64 = base64.b64encode(binary).decode("utf-8")
-        mime_type = detect_mime_type(binary)
+        mime_type = payload.get("mime_type") or detect_mime_type(binary)
         image_url = f"data:{mime_type};base64,{image_base64}"
         user_content = [
             {
@@ -315,7 +319,7 @@ def query_chatgpt(task: str, context: dict, payload: dict):
         with urllib.request.urlopen(http_request, timeout=60) as response:
             raw = response.read().decode("utf-8")
         elapsed = round(time.monotonic() - start, 2)
-    print("OpenAI response received", {"status": response.status, "seconds": elapsed})
+        print("OpenAI response received", {"status": response.status, "seconds": elapsed})
     except urllib.error.HTTPError as exc:
         error_body = exc.read().decode("utf-8") if exc.fp else ""
         print(
@@ -327,6 +331,7 @@ def query_chatgpt(task: str, context: dict, payload: dict):
         print("OpenAI request error", {"error": str(exc)})
         raise
 
+    print("OpenAI raw response", {"body": raw[:2000]})
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -337,10 +342,6 @@ def query_chatgpt(task: str, context: dict, payload: dict):
     except Exception as exc:
         print("OpenAI response extract failed", {"error": str(exc), "keys": list(payload.keys())})
         raise
-    print(
-        "OpenAI parse ok",
-        {"task": task, "restaurant_id": context.get("restaurant_id"), "output_len": len(text)},
-    )
     return text
 
 

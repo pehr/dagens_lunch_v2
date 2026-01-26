@@ -1,0 +1,15 @@
+{
+    "restaurant_id": "operan",
+    "sk": "INFO",
+    "restaurant_name": "Göteborgs Operan",
+    
+    "city": "goteborg",
+    "area": "innerstaden",
+    "city_name": "Göteborg",
+    "url": "https://www.opera.se/mat-och-dryck/lunch/",
+    "info": "Veckans lunchmeny - serveras vardagar kl. 11.30-14.00. Förboka gärna. Pris, 159 kr (kl. 11.30-13.15), 139 kr (kl. 13.15-14.00)",
+    "lunch_hours": "11.30-13.15",
+    "address": "Göteborgsoperan, Göteborg",
+    "phone": "031-13 13 00 ",
+    "scan": "yes"
+   }

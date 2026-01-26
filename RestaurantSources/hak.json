@@ -1,0 +1,15 @@
+{
+    "restaurant_id": "hak",
+    "sk": "INFO",
+    "restaurant_name": "HAK",
+    
+    "city": "goteborg",
+    "area": "innerstaden",
+    "city_name": "Göteborg",
+    "url": "https://golden-days.se/",
+    "info": "hak@scandichotels.com ",
+    "lunch_hours": "11.30-13.30",
+    "address": "Nils Ericsonsgatan 21, 411 03 Göteborg",
+    "phone": "+46 31 751 65 00",
+    "scan": "yes"
+   }

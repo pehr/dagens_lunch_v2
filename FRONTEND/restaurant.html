@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Weekly Menu</title>
+    <link href="./dist/output.css" rel="stylesheet">
+    <link href="./styles.css" rel="stylesheet">
+    <!-- Add Alpine.js -->
+    <script src="//unpkg.com/alpinejs" defer></script><!-- Add components -->
+</head>
+<body class="min-h-screen bg-base-100 flex flex-col" x-data="layout">
+    <!-- Main Content -->
+    <main class="flex-grow p-4">
+        <div x-data="restaurantMenu()" class="container mx-auto max-w-6xl">
+            <h1 x-text="restaurantName" class="text-3xl font-bold text-center mb-8"></h1>
+            
+            <!-- Restaurant Info Card -->
+            <div class="card w-full bg-base-100 border-2 border-[#ddd] shadow-md mb-6">
+                <div class="card-body">
+                    <h2 class="card-title">Restaurant Information</h2>
+                    <template x-if="restaurantInfo">
+                        <div class="space-y-2">
+                            <p x-show="restaurantInfo.info">
+                               
+                                <span x-text="restaurantInfo.info"></span>
+                            </p>
+                            <p x-show="restaurantInfo.url">
+                                <!-- <span class="font-bold">Website:</span> -->
+                                <a :href="restaurantInfo.url" target="_blank" 
+                                   class="link link-primary" x-text="restaurantInfo.url"></a>
+                            </p>
+                            <p x-show="restaurantInfo.address">
+                                <span class="font-bold">Address:</span>
+                                <span x-text="restaurantInfo.address"></span>
+                            </p>
+                            <p x-show="restaurantInfo.city_name || restaurantInfo.city">
+                                <span class="font-bold">City:</span>
+                                <span x-text="restaurantInfo.city_name || restaurantInfo.city"></span>
+                            </p>
+                           
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Menu Container - Remove flex layout since we don't need side-by-side anymore -->
+            <div>
+                <!-- Special Menu Card -->
+                <div x-show="hasSpecialMenu" class="card w-full bg-base-100 border-2 border-[#ddd] shadow-md mb-6">
+                    <div class="card-body">
+                        <h2 class="card-title">Special Menu Items</h2>
+                        <template x-for="(items, day) in specialMenuItems" :key="day">
+                            <div class="mb-4">
+                                <h3 x-text="capitalizeFirstLetter(day)" class="font-bold mb-2"></h3>
+                                <ul class="space-y-2">
+                                    <template x-for="item in items" :key="item.lunch">
+                                        <li>
+                                            <span x-text="item.lunch"></span>
+                                            <span class="text-sm" x-text="`(${item.price})`"></span>
+                                            <span x-show="item.tags?.length" class="text-sm italic" 
+                                                  x-text="`(${item.tags.join(', ')})`"></span>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div> 
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Week Menu Card -->
+                <div class="card w-full bg-base-100 border-2 border-[#ddd] shadow-md">
+                    <div class="card-body">
+                        <template x-if="!hasWeekMenu">
+                            <p>No menu data available for this week.</p>
+                        </template>
+                        
+                        <template x-for="day in standardDays" :key="day.api">
+                            <div class="mb-4">
+                                <h3 x-text="capitalizeFirstLetter(day.label)" class="font-bold mb-2"></h3>
+                                <ul class="space-y-2">
+                                    <template x-if="!weekMenuItems[day.api]?.length">
+                                        <li>No menu available</li>
+                                    </template>
+                                    <template x-for="item in weekMenuItems[day.api]" :key="item.lunch">
+                                        <li>
+                                            <span x-text="item.lunch"></span>
+                                            <span class="text-sm" x-text="`(${item.price})`"></span>
+                                            <span x-show="item.tags?.length" class="text-sm italic" 
+                                                  x-text="`(${item.tags.join(', ')})`"></span>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Load components after Alpine.js -->
+    <script src="components.js"></script>
+    <script>
+        function restaurantMenu() {
+            return {
+                apiBaseUrl: '',
+                devApiBaseUrl: 'https://u9l04oiup4.execute-api.eu-north-1.amazonaws.com/prod',
+                prodApiBaseUrl: 'https://pa8gwuanbh.execute-api.eu-north-1.amazonaws.com/prod/',
+                apiUrl: '',
+                restaurantInfoUrl: '',
+                restaurantName: '',
+                restaurantInfo: null,
+                weekMenuItems: {},
+                specialMenuItems: {},
+                standardDays: [
+                    { api: 'mon', label: 'måndag' },
+                    { api: 'tue', label: 'tisdag' },
+                    { api: 'wed', label: 'onsdag' },
+                    { api: 'thu', label: 'torsdag' },
+                    { api: 'fri', label: 'fredag' }
+                ],
+                
+                async init() {
+                    const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+                    this.apiBaseUrl = isLocal ? this.devApiBaseUrl : this.prodApiBaseUrl;
+                    this.apiUrl = `${this.apiBaseUrl}/restaurants`;
+                    this.restaurantInfoUrl = `${this.apiBaseUrl}/restaurants`;
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const restaurantId = urlParams.get('restaurant_id');
+                    
+                    if (!restaurantId) {
+                        this.weekMenuItems = {};
+                        return;
+                    }
+
+                    try {
+                        await this.loadRestaurantInfo(restaurantId);
+                        await this.loadWeekMenu(restaurantId);
+                    } catch (error) {
+                        console.error('Error loading data:', error);
+                    }
+                },
+
+                get hasWeekMenu() {
+                    return Object.keys(this.weekMenuItems).length > 0;
+                },
+
+                get hasSpecialMenu() {
+                    return Object.keys(this.specialMenuItems).length > 0;
+                },
+
+                async loadRestaurantInfo(restaurantId) {
+                    const response = await fetch(`${this.restaurantInfoUrl}/${encodeURIComponent(restaurantId)}`);
+                    const data = await response.json();
+                    const item = (data.items && data.items[0]) || null;
+                    this.restaurantInfo = item;
+                    this.restaurantName = item?.restaurant_name || this.capitalizeFirstLetter(restaurantId);
+                },
+
+                async loadWeekMenu(restaurantId) {
+                    const today = new Date();
+                    const year = today.getFullYear();
+                
+                    const week = String(this.getWeekNumber(today)).padStart(2, '0');
+                    const url = `${this.apiUrl}/${encodeURIComponent(restaurantId)}/${year}_${week}`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    this.processMenuData(data.items || []);
+                },
+
+                processMenuData(menuData) {
+                    const standardSet = new Set(this.standardDays.map(day => day.api));
+                    const grouped = menuData.reduce((acc, item) => {
+                        const day = (item.day || '').toLowerCase();
+                        if (!day) return acc;
+                        if (!acc[day]) acc[day] = [];
+                        (item.dishes || []).forEach(dish => acc[day].push({
+                            lunch: dish.name,
+                            price: dish.price,
+                            tags: dish.tags || []
+                        }));
+                        return acc;
+                    }, {});
+
+                    this.weekMenuItems = {};
+                    this.specialMenuItems = {};
+
+                    for (const [day, items] of Object.entries(grouped)) {
+                        if (standardSet.has(day)) {
+                            this.weekMenuItems[day] = items;
+                        } else {
+                            this.specialMenuItems[day] = items;
+                        }
+                    }
+                },
+
+                getWeekNumber(d) {
+                    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+                    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+                    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+                },
+
+                capitalizeFirstLetter(string) {
+                    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

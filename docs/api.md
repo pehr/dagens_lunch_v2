@@ -38,26 +38,21 @@ Get a single restaurant info item by id.
 Path params:
 - `restaurant_id` (string)
 
-Response 200:
+Response 200 (single object):
 
 ```json
 {
-  "items": [
-    {
-      "restaurant_id": "goldendays",
-      "sk": "INFO",
-      "restaurant_name": "Golden Days",
-      "url": "https://www.goldendays.se/",
-      "city": "goteborg",
-      "city_name": "Göteborg",
-      "area": "innerstaden",
-      "info": "TILL LUNCHEN INGÅR EN FRÄSCH SALLADSBUFFÉ, NYBRYGGT KAFFE OCH KAKA",
-      "lunch_hours": "11.00-15.00",
-      "address": "",
-      "coordinates": "",
-      "phone": ""
-    }
-  ]
+  "restaurant_id": "goldendays",
+  "restaurant_name": "Golden Days",
+  "url": "https://www.goldendays.se/",
+  "city": "goteborg",
+  "city_name": "Göteborg",
+  "area": "innerstaden",
+  "info": "TILL LUNCHEN INGÅR EN FRÄSCH SALLADSBUFFÉ, NYBRYGGT KAFFE OCH KAKA",
+  "lunch_hours": "11.00-15.00",
+  "address": "",
+  "coordinates": "",
+  "phone": ""
 }
 ```
 

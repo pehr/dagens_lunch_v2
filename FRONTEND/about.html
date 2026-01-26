@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Lunch Menu</title>
+    <link href="./dist/output.css" rel="stylesheet">
+    <link href="./styles.css" rel="stylesheet">
+    <!-- Add Alpine.js -->
+    <script src="./node_modules/alpinejs/dist/cdn.min.js" defer></script>
+</head>
+<body class="min-h-screen bg-base-100 flex flex-col" x-data="layout">
+    <!-- Main Content -->
+    <main class="flex-grow p-4">
+        <div class="container mx-auto max-w-6xl">
+            <div class="card bg-base-100 border-2 border-[#ddd] shadow-md mb-6">
+                <div class="card-body">
+                    <h1 class="text-3xl font-bold text-center mb-8">Om Veckans Lunch</h1>
+                    
+                    <div class="prose lg:prose-xl mx-auto">
+                        <p class="mb-4">
+                            Veckans Lunch är en till för att underlätta att hitta vad lunchrestauranger 
+                            i Göteborg har till lunch under veckan. 
+                        </p>
+
+                        <p class="mb-4">
+                            Tjänsten är utvecklad med hjälp av Cursor, ett AI-baserat utvecklingsverktyg. 
+                            Information om vad som serveras behandlas med AI och är därför inte 100% säker. 
+                            AI används för att enkelt identifiera vad som serveras utfrån restaurangernas websida.
+                            Tjänsten reserverar sig därför för att information om maträtt och pris kan vara felaktiga.
+                        </p>
+
+                        <p>
+                            Sidan använder inga cookies. 
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Load components after Alpine.js -->
+    <script src="components.js"></script>
+</body>
+</html> 

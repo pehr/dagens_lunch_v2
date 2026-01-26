@@ -1,0 +1,15 @@
+{
+    "restaurant_id": "privatarum",
+    "sk": "INFO",
+    "restaurant_name": "Thörnströms Privatrum",
+    
+    "city": "goteborg",
+    "area": "innerstaden",
+    "city_name": "Göteborg",
+    "url": "https://thornstroms.nu/en/friday-lunch/",
+    "info": "We just love fridays! Then we’re opening up Private Rooms for everyone with the best Friday lunch! <br>Table reservation: info@privatarum.com",
+    "lunch_hours": "11:30-13:00",
+    "address": "POSTGATAN 2, Göteborg",
+    "phone": "031-132066",
+    "scan": "yes"
+   }

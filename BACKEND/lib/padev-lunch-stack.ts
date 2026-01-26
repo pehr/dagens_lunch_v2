@@ -112,7 +112,8 @@ export class PadevLunchStack extends cdk.Stack {
       environment: {
         WEEKLY_LUNCHMENUS_BUCKET: weeklyLunchmenusBucket.bucketName,
         RESTAURANT_SOURCES_BUCKET: restaurantSourcesBucket.bucketName,
-        OPENAI_API_KEY_SECRET_ARN: openAiApiKeySecret.secretArn
+        OPENAI_API_KEY_SECRET_ARN: openAiApiKeySecret.secretArn,
+        OPENAI_MAX_TOKENS_OVERRIDES: JSON.stringify({ pagoden: 4000 })
       }
     });
 
@@ -126,7 +127,8 @@ export class PadevLunchStack extends cdk.Stack {
         WEEKLY_LUNCHMENUS_BUCKET: weeklyLunchmenusBucket.bucketName,
         RESTAURANT_SOURCES_BUCKET: restaurantSourcesBucket.bucketName,
         TABLE_NAME: tableName,
-        OPENAI_API_KEY_SECRET_ARN: openAiApiKeySecret.secretArn
+        OPENAI_API_KEY_SECRET_ARN: openAiApiKeySecret.secretArn,
+        OPENAI_MAX_TOKENS_OVERRIDES: JSON.stringify({ pagoden: 4000 })
       }
     });
 
@@ -146,7 +148,7 @@ export class PadevLunchStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: "enqueue_restaurants.index.handler",
       code: lambdaCode,
-      timeout: cdk.Duration.minutes(2),
+      timeout: cdk.Duration.minutes(1),
       environment: {
         TABLE_NAME: tableName,
         QUEUE_URL: parseQueue.queueUrl
@@ -184,7 +186,7 @@ export class PadevLunchStack extends cdk.Stack {
         ruleName: name("weekly-lunchmenu-ingest"),
         schedule: events.Schedule.cron({
           minute: "0",
-          hour: "9",
+          hour: "8",
           weekDay: "MON"
         })
       });
@@ -370,12 +372,12 @@ export class PadevLunchStack extends cdk.Stack {
                 "        #set($dishMap = $dish.M)",
                 "        #set($tags = $dishMap.tags.L)",
                 "        {",
-                "          \"name\": \"$util.escapeJavaScript($dishMap.name.S)\",",
+                "          \"name\": \"$dishMap.name.S\",",
                 "          \"price\": #if($dishMap.price.N != \"\")$dishMap.price.N#else null#end,",
                 "          \"tags\": [",
                 "#if($tags != \"\")",
                 "#foreach($tag in $tags)",
-                "            \"$util.escapeJavaScript($tag.S)\"#if($foreach.hasNext),#end",
+                "            \"$tag.S\"#if($foreach.hasNext),#end",
                 "#end",
                 "#end",
                 "          ]",
@@ -462,12 +464,12 @@ export class PadevLunchStack extends cdk.Stack {
                 "        #set($dishMap = $dish.M)",
                 "        #set($tags = $dishMap.tags.L)",
                 "        {",
-                "          \"name\": \"$util.escapeJavaScript($dishMap.name.S)\",",
+                "          \"name\": \"$dishMap.name.S\",",
                 "          \"price\": #if($dishMap.price.N != \"\")$dishMap.price.N#else null#end,",
                 "          \"tags\": [",
                 "#if($tags != \"\")",
                 "#foreach($tag in $tags)",
-                "            \"$util.escapeJavaScript($tag.S)\"#if($foreach.hasNext),#end",
+                "            \"$tag.S\"#if($foreach.hasNext),#end",
                 "#end",
                 "#end",
                 "          ]",

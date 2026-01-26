@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunch Menu</title>
+    <link href="./dist/output.css" rel="stylesheet">
+    <link href="./styles.css" rel="stylesheet">
+    <!-- Add Alpine.js -->
+    <script src="//unpkg.com/alpinejs" defer></script><!-- Add components -->
+    <script src="components.js"></script>
+</head>
+<body class="min-h-screen bg-base-100 flex flex-col">
+    <!-- Main Content -->
+    <main class="flex-grow p-4">
+        <!-- Define the lunchMenu function BEFORE using it -->
+        <script>
+            document.addEventListener('alpine:init', () => {
+                console.log('alpine:init fired');
+                const registerLunchMenu = () => {
+                console.log('registerLunchMenu');
+                Alpine.data('lunchMenu', () => ({
+                    apiBaseUrl: '',
+                    devApiBaseUrl: 'https://u9l04oiup4.execute-api.eu-north-1.amazonaws.com/prod',
+                    prodApiBaseUrl: 'https://pa8gwuanbh.execute-api.eu-north-1.amazonaws.com/prod/',
+                    apiUrl: '',
+                    restaurantsApiUrl: '',
+                    weekNumber: '',
+                    cityName: 'Göteborg',
+                    citySlug: 'goteborg',
+                    sortedRestaurants: [],
+                    currentLunchData: [],
+                    sidebarOpen: false,
+                    activeDay: '',
+                    selectedTags: [],
+                    days: [
+                        { short: 'Mån', full: 'måndag', api: 'mon' },
+                        { short: 'Tis', full: 'tisdag', api: 'tue' },
+                        { short: 'Ons', full: 'onsdag', api: 'wed' },
+                        { short: 'Tor', full: 'torsdag', api: 'thu' },
+                        { short: 'Fre', full: 'fredag', api: 'fri' }
+                    ],
+                    availableTags: [
+                        'asiatiskt', 'pasta', 'kött', 'fisk', 'soppa', 
+                        'kyckling', 'husmanskost', 'vegetariskt'
+                    ],
+
+                    // Your methods
+                    init() {
+                        console.log('Initializing lunchMenu component');
+                        this.weekNumber = this.getWeekNumber(new Date());
+                        console.log('Computed weekNumber', this.weekNumber);
+                        const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+                        this.apiBaseUrl = isLocal ? this.devApiBaseUrl : this.prodApiBaseUrl;
+                        this.apiUrl = `${this.apiBaseUrl}/lunch`;
+                        this.restaurantsApiUrl = `${this.apiBaseUrl}/restaurants`;
+                        this.fetchAllRestaurants();
+                        const today = new Date();
+                        const defaultDay = this.days[today.getDay() - 1] || this.days[0];
+                        this.showLunchForDay(defaultDay.api);
+                    },
+
+                    getWeekNumber(d) {
+                        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+                        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+                        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+                    },
+
+                    async fetchAllRestaurants() {
+                        try {
+                            console.log('Fetching restaurants...');
+                            const response = await fetch(this.restaurantsApiUrl);
+                            const data = await response.json();
+                            console.log('Received restaurant data:', data);
+                            
+                            // Extract the Items array from the response
+                            const restaurantsArray = data.items || [];
+                            
+                            if (!restaurantsArray.length) {
+                                console.warn('No restaurants found in data:', data);
+                                this.sortedRestaurants = [];
+                                return;
+                            }
+
+                            this.sortedRestaurants = restaurantsArray
+                                .filter(item => item && item.restaurant_id)
+                                .sort((a, b) => {
+                                    const nameA = (a.restaurant_name || a.restaurant_id).toLowerCase();
+                                    const nameB = (b.restaurant_name || b.restaurant_id).toLowerCase();
+                                    return nameA.localeCompare(nameB);
+                                });
+                            console.log('Processed restaurants:', this.sortedRestaurants);
+                        } catch (error) {
+                            console.error('Error fetching restaurants:', error);
+                            this.sortedRestaurants = [];
+                        }
+                    },
+
+                    async showLunchForDay(day) {
+                        this.activeDay = day;
+                        try {
+                            const today = new Date();
+                            const year = today.getFullYear();
+                            const week = String(this.getWeekNumber(today)).padStart(2, '0');
+                            
+                            const url = `${this.apiUrl}/${this.citySlug}/${year}_${week}/${encodeURIComponent(day)}`;
+                            const response = await fetch(url);
+                            const data = await response.json();
+                            this.currentLunchData = data.items || [];
+                        } catch (error) {
+                            console.error('Error fetching lunch data:', error);
+                            this.currentLunchData = [];
+                        }
+                    },
+
+                    toggleSidebar() {
+                        this.sidebarOpen = !this.sidebarOpen;
+                    },
+
+                    goToRestaurantPage(restaurantId) {
+                        window.location.href = `restaurant.html?restaurant_id=${encodeURIComponent(restaurantId)}`;
+                    },
+
+                    // ... rest of your methods ...
+
+                    // Computed property for groupedLunchData
+                    get groupedLunchData() {
+                        if (!this.currentLunchData || !Array.isArray(this.currentLunchData)) {
+                            return {};
+                        }
+
+                        // First filter the data based on selected tags
+                        const filteredData = this.selectedTags.length === 0
+                            ? this.currentLunchData
+                            : this.currentLunchData.filter(item => {
+                                const allTags = (item.dishes || []).flatMap(d => d.tags || []);
+                                return this.selectedTags.some(selectedTag =>
+                                    allTags.map(tag => tag.toLowerCase()).includes(selectedTag.toLowerCase())
+                                );
+                            });
+
+                        // Then group the filtered data
+                        const grouped = filteredData.reduce((acc, item) => {
+                            if (!item || !item.restaurant_id) return acc;
+                            
+                            const restaurantInfo = this.sortedRestaurants.find(
+                                r => r.restaurant_id === item.restaurant_id
+                            );
+                            const displayName = restaurantInfo 
+                                ? (restaurantInfo.restaurant_name || restaurantInfo.restaurant_id)
+                                : this.capitalizeFirstLetter(item.restaurant_id);
+
+                            if (!acc[item.restaurant_id]) {
+                                acc[item.restaurant_id] = { displayName, dishes: [] };
+                            }
+                            (item.dishes || []).forEach(dish => {
+                                acc[item.restaurant_id].dishes.push(dish);
+                            });
+                            return acc;
+                        }, {});
+
+                        // Sort the grouped data
+                        const sortedEntries = Object.entries(grouped)
+                            .sort(([, a], [, b]) => 
+                                a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase())
+                            );
+
+                        return Object.fromEntries(sortedEntries);
+                    },
+
+                    capitalizeFirstLetter(string) {
+                        if (!string) return '';
+                        return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+                    }
+                }));
+                };
+
+                registerLunchMenu();
+            });
+        </script>
+
+        <!-- Use the Alpine.js component -->
+        <div x-data="lunchMenu" class="container mx-auto max-w-6xl">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold mb-2">Lunch Menu v<span x-text="weekNumber"></span></h1>
+                <div class="text-2xl font-bold" x-text="cityName"></div>
+            </div>
+
+            <!-- Restaurant List Section -->
+            <div class="mb-6" x-data="{ open: false }">
+                <!-- Always visible title with chevron -->
+                <div class="bg-base-100  p-4 cursor-pointer"
+                     @click="open = !open">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-xl font-medium">Restaurants</h2>
+                        <svg xmlns="http://www.w3.org/2000/svg" 
+                             class="h-4 w-4 transition-transform duration-200"
+                             width="16" height="16"
+                             :class="{ 'rotate-180': open }"
+                             fill="none" 
+                             viewBox="0 0 24 24" 
+                             stroke="currentColor">
+                            <path stroke-linecap="round" 
+                                  stroke-linejoin="round" 
+                                  stroke-width="2" 
+                                  d="M19 9l-7 7-7-7 M19 4l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Collapsible content -->
+                <div class="overflow-hidden transition-all duration-300"
+                     x-show="open"
+                     x-transition
+                     x-cloak>
+                    <div class="bg-base-100 border-x-2 border-b-2 border-[#ddd]">
+                        <ul class="menu p-4">
+                            <template x-for="restaurant in sortedRestaurants" :key="restaurant.restaurant_id">
+                                <li>
+                                    <a @click="goToRestaurantPage(restaurant.restaurant_id)" 
+                                       x-text="restaurant.restaurant_name || restaurant.restaurant_id"
+                                       class="cursor-pointer"></a>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="flex-1">
+                <!-- Days Tabs -->
+                <div class="grid grid-cols-5 gap-2 mb-6" style="display:flex; gap:0.5rem;">
+                    <template x-for="day in days" :key="day.full">
+                        <button
+                            class="btn btn-lg w-full normal-case"
+                            style="flex:1 1 0;"
+                            :class="activeDay === day.api ? 'accent-background' : 'bg-base-200'"
+                            @click="showLunchForDay(day.api)"
+                            x-text="day.short"></button>
+                    </template>
+                </div>
+ 
+                <!-- Filter Section -->
+                <div class="dropdown mb-6" x-data="{ open: false }">
+                    <label tabindex="0" 
+                           class="btn m-1" 
+                           @click="open = !open"
+                           @click.away="open = false">
+                        <img src="imgs/filter.png" alt="Filter" class="w-4 h-4 mr-2" width="16" height="16">
+                        Mat Kategorier
+                    </label>
+                    <ul tabindex="0" 
+                        class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
+                        x-show="open"
+                        @click.away="open = false">
+                        <template x-for="tag in availableTags" :key="tag">
+                            <li>
+                                <label class="label cursor-pointer">
+                                    <span class="label-text" x-text="tag.charAt(0).toUpperCase() + tag.slice(1)"></span>
+                                    <input type="checkbox" 
+                                           class="checkbox" 
+                                           x-model="selectedTags" 
+                                           :value="tag"
+                                           @click.stop>
+                                </label>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+
+                <!-- Lunch Info -->
+                <div id="lunchInfo">
+                    <template x-if="Object.keys(groupedLunchData).length === 0">
+                        <div class="card bg-base-100 border-2 border-[#ddd] shadow-md mb-6">
+                            <div class="card-body">
+                                <p>No lunch data available for this day...</p>
+                            </div>
+                        </div>
+                    </template>
+                    
+                    <template x-for="(restaurant, restaurantId) in groupedLunchData" :key="restaurantId">
+                        <div class="card bg-base-100 border-2 border-[#ddd] shadow-md mb-6">
+                            <div class="card-body">
+                                <h2 class="card-title">
+                                    <a @click="goToRestaurantPage(restaurantId)" 
+                                       class="cursor-pointer hover:underline flex items-center">
+                                        <span x-text="restaurant.displayName"></span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                                        </svg>
+                                    </a>
+                                </h2>
+                                <ul class="space-y-2">
+                                    <template x-for="dish in restaurant.dishes" :key="dish.name">
+                                        <li>
+                                            <span x-text="dish.name"></span>
+                                            <span class="text-sm" x-text="`(${dish.price})`"></span>
+                                            <span x-show="dish.tags?.length" 
+                                                  class="text-sm italic" 
+                                                  x-text="`(${dish.tags.join(', ')})`"></span>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

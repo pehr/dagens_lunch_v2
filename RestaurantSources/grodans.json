@@ -1,0 +1,15 @@
+{
+    "restaurant_id": "goldendays",
+    "sk": "INFO",
+    "restaurant_name": "Grodans Blommor Käk & Kärlek",
+    
+    "city": "kungsbacka",
+    "area": "kungsbacka",
+    "city_name": "Göteborg",
+    "url": "https://grodans-blommor.se/",
+    "info": "info@grodansblommorotradgard.se",
+    "lunch_hours": "11.00-14.00",
+    "address": "Björkrisvägen 38A, 43460 Kungsbacka",
+    "phone": "0765 55 59 53",
+    "scan": "yes"
+   }

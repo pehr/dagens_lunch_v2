@@ -1,0 +1,15 @@
+{
+    "restaurant_id": "pagoden",
+    "sk": "INFO",
+    "restaurant_name": "Pagoden",
+    
+    "city": "goteborg",
+    "area": "centralen",
+    "city_name": "Göteborg",
+    "url": "https://pagoden.se/#monday",
+    "info": "För mer info, maila oss på: info@pagoden.se eller info@monopolet.nu",
+    "lunch_hours": "11:00-13:30",
+    "address": "Gullbergs Strandgata 15, 411 04 Göteborg",
+    "phone": "031 – 155055",
+    "scan": "yes"
+   }

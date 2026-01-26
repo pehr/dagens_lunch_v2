@@ -1,0 +1,15 @@
+{
+    "restaurant_id": "bjorkmans",
+    "sk": "INFO",
+    "restaurant_name": "Björkmans Skafferi",
+    
+    "city": "goteborg",
+    "area": "centralen",
+    "city_name": "Göteborg",
+    "url": "https://www.bjorkmansskafferi.se/",
+    "info": "Hos oss blandas det bästa från olika hörn av världen. Den friska smaken från Norden, värmen från Medelhavet, färgerna från växtriket och den mustiga umamin från Asien. Vi lagar lunch som känns enkel och god, med lagom balans och mycket omtanke. hak@scandichotels.com ",
+    "lunch_hours": "11.00-13.30",
+    "address": "Kilsgatan 4 - 411 04 Göteborg",
+    "phone": "info@bjorkmansskafferi.se",
+    "scan": "yes"
+   }

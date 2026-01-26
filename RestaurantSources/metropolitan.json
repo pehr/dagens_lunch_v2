@@ -1,0 +1,15 @@
+{
+    "restaurant_id": "metropolitan",
+    "sk": "INFO",
+    "restaurant_name": "Metropolitan Brew & Grill",
+    
+    "city": "goteborg",
+    "area": "centralen",
+    "city_name": "Göteborg",
+    "url": "https://lepainfrancais.se/menyn/",
+    "info": "Välkomna",
+    "lunch_hours": "11.30-14.00",
+    "address": "Centralstationen Göteborg",
+    "phone": "031-124444",
+    "scan": "no"
+   }
