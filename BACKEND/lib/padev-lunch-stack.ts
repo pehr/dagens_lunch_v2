@@ -5,6 +5,7 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as events from "aws-cdk-lib/aws-events";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as logs from "aws-cdk-lib/aws-logs";
 import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
@@ -194,11 +195,31 @@ export class PadevLunchStack extends cdk.Stack {
       weeklyRule.addTarget(new targets.LambdaFunction(enqueueRestaurantsLambda));
     }
 
+    const apiAccessLogGroup = new logs.LogGroup(this, "ApiAccessLogs", {
+      retention: logs.RetentionDays.ONE_MONTH
+    });
+
     const api = new apigateway.RestApi(this, "LunchApi", {
       restApiName: name("api"),
       deployOptions: {
         throttlingRateLimit: 5,
-        throttlingBurstLimit: 20
+        throttlingBurstLimit: 20,
+        accessLogDestination: new apigateway.LogGroupLogDestination(apiAccessLogGroup),
+        accessLogFormat: apigateway.AccessLogFormat.custom(
+          JSON.stringify({
+            requestId: "$context.requestId",
+            requestTime: "$context.requestTime",
+            httpMethod: "$context.httpMethod",
+            path: "$context.path",
+            resourcePath: "$context.resourcePath",
+            status: "$context.status",
+            integrationStatus: "$context.integrationStatus",
+            responseLatency: "$context.responseLatency",
+            integrationLatency: "$context.integrationLatency",
+            errorMessage: "$context.error.message",
+            userAgent: "$context.identity.userAgent"
+          })
+        )
       }
     });
 

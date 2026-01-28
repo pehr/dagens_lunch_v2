@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="city-slug" content="goteborg">
+    <meta name="city-slug" content="stockholm">
     <title>Lunch Menu</title>
-    <link href="./dist/output.css" rel="stylesheet">
-    <link href="./styles.css" rel="stylesheet">
+    <link href="../dist/output.css" rel="stylesheet">
+    <link href="../styles.css" rel="stylesheet">
     <!-- Add Alpine.js -->
     <script src="//unpkg.com/alpinejs" defer></script><!-- Add components -->
-    <script src="components.js"></script>
+    <script src="../components.js"></script>
 </head>
 <body class="min-h-screen bg-base-100 flex flex-col">
     <!-- Main Content -->
@@ -260,7 +260,7 @@
                            class="btn m-1" 
                            @click="open = !open"
                            @click.away="open = false">
-                        <img src="imgs/filter.png" alt="Filter" class="w-4 h-4 mr-2" width="16" height="16">
+                        <img src="../imgs/filter.png" alt="Filter" class="w-4 h-4 mr-2" width="16" height="16">
                         Mat Kategorier
                     </label>
                     <ul tabindex="0" 

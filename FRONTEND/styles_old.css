@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* Colors */
+.accent-color {
+    color: #951304;
+}
+.accent-background {
+    background-color: #951304;
+    color: white;
+}
+
+/* Header and Footer Styles */
+.site-header {
+    width: 100%;
+    padding: 1rem 1.5rem;
+    background-color: #951304 !important;
+}
+
+.site-header-content {
+    width: 100%;
+    max-width: 80rem;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.site-header-title {
+    color: white !important;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.site-header-nav {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.site-header-link {
+    color: white !important;
+    transition: color 0.2s;
+}
+
+.site-header-link:hover {
+    color: #e5e5e5 !important;
+}
+
+.site-footer {
+    width: 100%;
+    padding: 1rem 1.5rem;
+    margin-top: auto;
+    background-color: #951304 !important;
+}
+
+.site-footer-content {
+    width: 100%;
+    max-width: 80rem;
+    margin: 0 auto;
+    text-align: center;
+    color: white !important;
+}
