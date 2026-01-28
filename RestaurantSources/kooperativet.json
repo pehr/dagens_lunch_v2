@@ -1,0 +1,15 @@
+{
+    "restaurant_id": "kooperativet",
+    "sk": "INFO",
+    "restaurant_name": "Kooperativet",
+    
+    "city": "goteborg",
+    "area": "lindholmen",
+    "city_name": "Göteborg",
+    "url": "https://www.kooperativet.se/",
+    "info": "Lunchserveringen har öppet måndag - fredag 11-13:30. Vi serverar lunch från 6 olika kök och i alla rätter ingår salladsbuffé, hembakt bröd av olika sorter samt kaffe och kaka. Priset för lunch är 139:-",
+    "lunch_hours": "11:00-13:30",
+    "address": "Anders Carlssons gata 2, 417 55 Göteborg",
+    "phone": "031-22 77 97",
+    "scan": "yes"
+   }

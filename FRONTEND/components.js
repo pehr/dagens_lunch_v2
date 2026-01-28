@@ -47,9 +47,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggle = document.querySelector('.nav-toggle');
     const nav = document.querySelector('.site-header-nav');
     if (toggle && nav) {
-        toggle.addEventListener('click', () => {
+        const closeNav = () => {
+            nav.classList.remove('is-open');
+            nav.style.display = 'none';
+            toggle.setAttribute('aria-expanded', 'false');
+        };
+
+        toggle.addEventListener('click', (event) => {
+            event.stopPropagation();
             const isOpen = nav.classList.toggle('is-open');
+            nav.style.display = isOpen ? 'flex' : 'none';
             toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!nav.classList.contains('is-open')) return;
+            if (nav.contains(event.target) || toggle.contains(event.target)) return;
+            closeNav();
+        });
+
+        nav.addEventListener('click', (event) => {
+            if (event.target.closest('a')) {
+                closeNav();
+            }
         });
     }
 }); 

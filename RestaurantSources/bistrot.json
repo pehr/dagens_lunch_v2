@@ -1,0 +1,15 @@
+{
+    "restaurant_id": "bistrot",
+    "sk": "INFO",
+    "restaurant_name": "Bistrot",
+    
+    "city": "goteborg",
+    "area": "lindholmen",
+    "city_name": "Göteborg",
+    "url": "https://bistrot.se/",
+    "info": "Lunchserveringen har öppet måndag - fredag 11-14. I alla rätter ingår salladsbuffé, hembakt surdegsbröd, kaffe och kaka. Dagens Lunch  130:- Take away 130:- Kontakta oss på catering@bistrot.se Vi tar inga bordsbokningar.",
+    "lunch_hours": "11:00-14:00",
+    "address": "Diagonalen 8, 417 56 Göteborg",
+    "phone": "031-223323",
+    "scan": "yes"
+   }
