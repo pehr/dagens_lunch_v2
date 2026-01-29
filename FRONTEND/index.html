@@ -31,7 +31,7 @@
                     citySlug: 'goteborg',
                     selectedArea: 'all',
                     areasByCity: {
-                        goteborg: ['centralen', 'innerstaden'],
+                        goteborg: ['centralen', 'innerstaden', 'lindholmen'],
                         kungsbacka: ['centrum'],
                         stockholm: ['centrum']
                     },
@@ -217,7 +217,7 @@
                         <select class="select select-bordered"
                                 x-model="selectedArea"
                                 @change="onAreaChange()">
-                            <option value="all">All</option>
+                            <option value="all">Alla Områden</option>
                             <template x-for="area in (areasByCity[citySlug] || [])" :key="area">
                                 <option :value="area" x-text="capitalizeFirstLetter(area)"></option>
                             </template>
